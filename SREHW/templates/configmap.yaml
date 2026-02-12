@@ -1,0 +1,55 @@
+{{- if .Values.config.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "my-app-chart.fullname" . }}
+  labels:
+    {{- include "my-app-chart.labels" . | nindent 4 }}
+data:
+  {{- range $key, $value := .Values.config.data }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}
+  
+  # Конфигурационный файл в формате JSON
+  app-config.json: |
+    {
+      "app": {
+        "name": "{{ $.Chart.Name }}",
+        "version": "{{ $.Chart.Version }}",
+        "environment": "{{ $.Values.config.data.app.env }}"
+      },
+      "database": {
+        "host": "{{ $.Values.config.data.database.host }}",
+        "port": {{ $.Values.config.data.database.port }},
+        "name": "{{ $.Values.config.data.database.name }}"
+      },
+      "cache": {
+        "enabled": {{ $.Values.config.data.cache.enabled }},
+        "ttl": {{ $.Values.config.data.cache.ttl }}
+      },
+      "logging": {
+        "level": "{{ $.Values.config.data.log.level }}"
+      },
+      "features": {
+        "flag": {{ $.Values.config.data.feature.flag }}
+      }
+    }
+
+  # Конфигурационный файл в формате YAML
+  app-config.yaml: |
+    app:
+      name: {{ $.Chart.Name }}
+      version: {{ $.Chart.Version }}
+      environment: {{ $.Values.config.data.app.env }}
+    database:
+      host: {{ $.Values.config.data.database.host }}
+      port: {{ $.Values.config.data.database.port }}
+      name: {{ $.Values.config.data.database.name }}
+    cache:
+      enabled: {{ $.Values.config.data.cache.enabled }}
+      ttl: {{ $.Values.config.data.cache.ttl }}
+    logging:
+      level: {{ $.Values.config.data.log.level }}
+    features:
+      flag: {{ $.Values.config.data.feature.flag }}
+{{- end }}

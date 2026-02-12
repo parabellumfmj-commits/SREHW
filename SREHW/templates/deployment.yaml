@@ -1,0 +1,130 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "my-app-chart.fullname" . }}
+  labels:
+    {{- include "my-app-chart.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "my-app-chart.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "my-app-chart.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+      - name: {{ .Chart.Name }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        
+        # Ваше кастомное приложение - используем кастомную страницу
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "<html>
+          <head><title>My Custom App</title></head>
+          <body>
+          <h1>Welcome to My Custom Application!</h1>
+          <p>Version: {{ .Values.config.data.app.version }}</p>
+          <p>Environment: {{ .Values.config.data.app.env }}</p>
+          <p>Hostname: $(HOSTNAME)</p>
+          <p>ConfigMap Data:</p>
+          <pre>
+          {{- range $key, $value := .Values.config.data }}
+          {{ $key }}: {{ $value }}
+          {{- end }}
+          </pre>
+          <hr>
+          <p>/health - Liveness Probe</p>
+          <p>/ready - Readiness Probe</p>
+          </body>
+          </html>" > /usr/share/nginx/html/index.html && 
+          echo "OK" > /usr/share/nginx/html/health && 
+          echo "READY" > /usr/share/nginx/html/ready && 
+          nginx -g 'daemon off;'
+
+        ports:
+        - name: http
+          containerPort: 80
+          protocol: TCP
+
+        # Две пробы: livenessProbe и readinessProbe
+        {{- if .Values.probes.livenessProbe.enabled }}
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.probes.livenessProbe.path }}
+            port: {{ .Values.probes.livenessProbe.port }}
+          initialDelaySeconds: {{ .Values.probes.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.probes.livenessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.probes.livenessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.probes.livenessProbe.failureThreshold }}
+          successThreshold: {{ .Values.probes.livenessProbe.successThreshold }}
+        {{- end }}
+
+        {{- if .Values.probes.readinessProbe.enabled }}
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.probes.readinessProbe.path }}
+            port: {{ .Values.probes.readinessProbe.port }}
+          initialDelaySeconds: {{ .Values.probes.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.probes.readinessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.probes.readinessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.probes.readinessProbe.failureThreshold }}
+          successThreshold: {{ .Values.probes.readinessProbe.successThreshold }}
+        {{- end }}
+
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+
+        env:
+        - name: HOSTNAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: CONFIG_VERSION
+          value: {{ .Values.config.data.app.version | quote }}
+        {{- range $key, $value := .Values.config.data }}
+        - name: {{ upper (replace "." "_" (replace "/" "_" (replace "-" "_" $key))) }}
+          value: {{ $value | quote }}
+        {{- end }}
+        {{- if .Values.extraEnv }}
+        {{- toYaml .Values.extraEnv | nindent 8 }}
+        {{- end }}
+
+        volumeMounts:
+        - name: config
+          mountPath: /etc/config
+        - name: tmp
+          mountPath: /tmp
+
+      volumes:
+      - name: config
+        configMap:
+          name: {{ include "my-app-chart.fullname" . }}
+      - name: tmp
+        emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
