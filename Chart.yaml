@@ -1,0 +1,18 @@
+apiVersion: v2
+name: sre-helm-chart
+description: description dlya Helm chart
+type: application
+version: 0.1.0
+appVersion: 1.0.0
+
+keywords:
+  - web
+  - application
+  - custom-app
+
+maintainers:
+  - name: TrokajVI
+    email: admin@krasavchik.com
+    url: https://kakoy-to.domen.com
+
+dependencies: []
