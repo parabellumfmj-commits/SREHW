@@ -1,5 +1,5 @@
 app:
-  name: "my-python-app"
+  name: "sre-helm-chart"
   port: 80
 service:
   type: NodePort
